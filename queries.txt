@@ -1,0 +1,277 @@
+// fetching user name
+
+DELIMITER $$
+CREATE PROCEDURE GetUsername
+	( in ID INT)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	SELECT Username FROM (USER) WHERE ID=@ID
+END
+
+DELIMITER $$
+
+
+Delimitter $$
+CREATE PROCEDURE GetUserJob
+	(UserID INT)
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+    
+	IF ((SELECT IsAdmin FROM [USER] WHERE ID=@UserID) = 1)
+	BEGIN
+		SELECT 'Admin'
+	END
+	ELSE
+	BEGIN
+		DECLARE @EmpID INT = (SELECT EmployeeID FROM (USER) WHERE ID=@UserID)
+		DECLARE @JobID INT = (SELECT JobID FROM Employee WHERE ID=@EmpID)
+		SELECT Job_Description FROM JOB WHERE ID=@JobID 
+	END
+END
+
+delimitter $$
+
+
+
+Delimitter $$
+
+
+
+
+--- status about train
+
+CREATE PROCEDURE GetAllTrains	
+	
+	@StationID INT = null
+AS
+BEGIN
+	
+	SET NOCOUNT ON;
+   
+	IF (@StationID IS NOT NULL)
+	BEGIN
+		SELECT T.ID AS 'ID', Model, [Status], Color, No_Seats, Speed,
+		No_Cars, CAST([Date] AS varchar(10)) AS 'Date', Driver_ID, Repair_Yard_ID, Coach_Yard_ID, BoughtByID 
+		FROM 
+		Train T
+		WHERE 
+		Driver_ID IS NULL AND 
+		(EXISTS(SELECT * FROM Coach_Yard C WHERE C.ID=T.Coach_Yard_ID AND C.Station_ID=@StationID)
+		OR
+		EXISTS(SELECT * FROM Repair_Yard R WHERE R.ID=T.Repair_Yard_ID AND R.Station_ID=@StationID))
+	END
+	ELSE
+		SELECT ID AS 'ID', Model, [Status], Color, No_Seats, Speed,
+		No_Cars, CAST([Date] AS varchar(10)) AS 'Date', Driver_ID, Repair_Yard_ID, Coach_Yard_ID, BoughtByID FROM Train
+END
+
+
+
+delimitter $$
+
+
+
+----------trip status ----
+
+delimitter$$
+
+
+CREATE PROCEDURE GetAllTrips	
+	
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+    Insert statements for procedure here
+	SELECT T.Arr_TIme ,T.Dept_time ,T.ID  trip_id,T.Type  "Class" , S.Name  "From" ,D.Name  "TO",TR.Model  "Train Model"
+	  FROM Trip T, Station S,Station D,Train TR where T.Source_ID=S.ID and T.Destintaion_ID=D.ID and T.Train_ID=TR.ID
+END
+
+-- ticket 
+delimitter $$
+
+create PROCEDURE getticketattinfo
+((date1 varchar(50),
+date2 varchar(50),
+source int,
+Destination int,
+class varchar(50))
+AS
+BEGIN
+select top 1 T.ID from Ticket T where T.Trip_ID = (select TR.ID from Trip Tr where @source=Tr.Source_ID and
+Destination=Tr.Destintaion_ID and Tr.Arr_Time>CAST(date1 as Date) and Tr.Arr_Time<CAST(date2 as Date) ) and Passenger_ID is null and class=Class
+END
+
+
+delimitter$$
+
+
+
+
+
+
+-----ticket price 
+
+
+delimitter$$
+create PROCEDURE getticketprice
+(date1 varchar(50),
+date2 varchar(50),
+source int,
+Destination int,
+class varchar(50))
+AS
+BEGIN
+select top 1 T.Price from Ticket T where T.Trip_ID = (select TR.ID from Trip Tr where source=Tr.Source_ID and
+Destination=Tr.Destintaion_ID and Tr.Arr_Time>CAST(date1 as Date) and Tr.Arr_Time<CAST(date2 as Date)  )  and Passenger_ID is null and class=Class
+END
+
+delimitter$$
+
+
+-----cancel ticket
+
+
+delimitter$$
+
+create PROCEDURE CancelTicket
+(@ticketID int)
+AS
+BEGIN
+	update Ticket set Passenger_ID=null,Booking_Clerk_ID=null,Date=null where ID=@ticketID
+END
+
+
+delimitter$$
+
+-----connect ticket to passenger
+
+delimitter$$
+
+
+
+create PROCEDURE connectTicket
+(
+@PassengerID int,
+@BookingeClerkID int,
+@Date varchar(50),
+@ID int)
+AS
+BEGIN
+Update Ticket set Passenger_ID=@PassengerID , Date=@Date ,Booking_Clerk_ID=@BookingeClerkID where ID=@ID  
+END
+
+
+------ Delete Passenger Contact
+
+delimitter$$
+
+------ Delete Passenger Contact
+
+create PROCEDURE DeletePContact 
+	@Email varchar(50)
+AS
+BEGIN
+	declare @passenger int;
+	set @passenger=(select Passenger_ID from Passenger_Contact where Passenger_Contact.Email=@Email)
+	if (select count(*) from Passenger_Contact where Passenger_ID =@passenger) > 1 
+	Begin
+	select Passenger_ID from Passenger_Contact where Passenger_Contact.Email=@Email
+	Delete from Passenger_Contact where @Email=Passenger_Contact.Email
+	End
+	else 
+	begin
+	select -1
+	end
+END
+
+
+-----get all passengers
+
+AS
+BEGIN
+	SELECT * from Passenger
+END
+
+
+
+----- get passenger contact
+
+delimitter$$
+
+CREATE PROCEDURE GetPContact 
+( in @PassengerID int)
+	AS
+BEGIN
+	.
+	SET NOCOUNT ON;
+
+	
+	SELECT First_name,Last_name,Email,City,State,Street from Passenger_Contact,Passenger
+	 where Passenger_ID=@PassengerID and Passenger_ID=ID  
+END
+
+----- addcontact
+
+delimitter$$
+
+
+CREATE PROCEDURE AddPContact 
+	( in 
+	@PassengerID int,
+	@City varchar(50),
+	@Email varchar(50),
+	@State varchar(50),
+	@Street varchar(50))
+
+	AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	
+	Insert into  Passenger_Contact Values(@PassengerID,@Email,@City,@State,@Street)  
+END
+
+delimitter$$
+
+
+---- add passenger phone
+
+CREATE PROCEDURE AddPPhone 
+	( in 
+	@PassengerID int,
+	@code int,
+	@number int
+)
+	AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+	Insert into Passenger_Phone Values(@PassengerID,@code,@number)
+END
+
+
+
+----view phone number
+
+delimitter$$
+
+Create PROCEDURE VeiwPPhone 
+
+	(@PassengerID int)
+BEGIN
+	
+	select First_name "First Name",Last_name "Last Name",Code,Number from Passenger_Phone,Passenger where  @PassengerID=Passenger_ID and @PassengerID=ID
+END
+
